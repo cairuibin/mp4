@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# @File      : commit-msg.sh
+# @Time      : 2020/7/8 13:32
+# @Author    : Zhanghui.H
+
+fileName=$1
+message=$(<$fileName)
+
+# 提交内容的正则表达式文件名，一行一个正则
+regularFileName=".git/hooks/commit-regulars"
+
+COMMIT_MESSAGE_MIN_LENGTH=12
+
+echo $message
+while IFS='' read -r line || [[ -n "$line" ]]; do
+	line=$(echo $line | tr -d '\r')
+    if [ ! `echo "${message}" | grep -nE "$line"` ]; then
+        echo  "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"  >&2
+        echo -e "@@\033[1;41;33m       您本次版本提交不符合日志提交规范!!!     \033[0m@@"  >&2
+        echo -e "@@\033[1;41;33m    提交规则:                                  \033[0m@@"  >&2
+        echo -e "@@\033[1;41;33m       [任务号/bug号];提交描述:                \033[0m@@"  >&2
+        echo -e "@@\033[1;41;33m       [任务号/bug号]必填,如果不存在填写[0]    \033[0m@@"  >&2
+        echo -e "@@\033[1;41;33m    e.g:(任务号前加t,BUG号前加b)               \033[0m@@"  >&2
+        echo -e "@@\033[1;41;33m       [b1372]解决:...                         \033[0m@@"  >&2
+        echo -e "@@\033[1;41;33m       [t1373]增加:...                         \033[0m@@"  >&2
+        echo  "@@@@@@@@@@@@@@@@***禁止空格数据***@@@@@@@@@@@@@@@@@"  >&2
+        exit 1
+    else
+        msg_length=${#message}
+        if [[ ${msg_length} -lt ${COMMIT_MESSAGE_MIN_LENGTH} ]]; then
+          echo    "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"  >&2
+          echo -e "@@\033[1;41;33m        Error: Message长度不得少于${COMMIT_MESSAGE_MIN_LENGTH}字符,当前提交message长度: ${msg_length}字符         \033[0m@@" >&2
+          echo    "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"  >&2
+          exit 1
+        fi
+
+	fi
+done < $regularFileName

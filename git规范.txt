@@ -1,0 +1,83 @@
+背景：
+        项目由于git进行管控，对commit的日志需要进行规范化输出，git的hooks默认管控单仓库，在.git/hooks里面，默认关闭，如果启用的话将后缀.sample去掉。系统提供的commit检验是git文本的最后是否有空格，根据规定，需要进行规则自定义，实现项目提交记录如：
+
+ e.g:(任务号前+t,BUG号前+b) 
+ [b1372]解决:...                         
+ [t1373]增加:... 
+
+一、创建脚本
+
+1、commit-regulars
+[\[【][btBT][0-9]+[]】]
+
+
+这个脚本主要为自定义的正则匹配规则
+2、commit-msg
+#!/usr/bin/env bash
+# @File      : commit-msg.sh
+# @Time      : 2020/7/8 13:32
+# @Author    : Zhanghui.H
+
+fileName=$1
+message=$(<$fileName)
+
+# 提交内容的正则表达式文件名，一行一个正则
+regularFileName=".git/hooks/commit-regulars"
+
+COMMIT_MESSAGE_MIN_LENGTH=12
+
+echo $message
+while IFS='' read -r line || [[ -n "$line" ]]; do
+   line=$(echo $line | tr -d '\r')
+   if [[ "$message" =~ "Merge branch" ]]; then
+        echo "Merge branch...skip the checking"
+    else
+        if [ ! `echo "${message}" | grep -nE "$line"` ]; then
+            echo  "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"  >&2
+            echo -e "@@\033[1;41;33m       您本次版本提交不符合日志提交规范!!!     \033[0m@@"  >&2
+            echo -e "@@\033[1;41;33m    提交规则:                                  \033[0m@@"  >&2
+            echo -e "@@\033[1;41;33m       [任务号/bug号];提交描述:                \033[0m@@"  >&2
+            echo -e "@@\033[1;41;33m       [任务号/bug号]必填,如果不存在填写[0]    \033[0m@@"  >&2
+            echo -e "@@\033[1;41;33m    e.g:(任务号前加t,BUG号前加b)               \033[0m@@"  >&2
+            echo -e "@@\033[1;41;33m       [b1372]解决:...                         \033[0m@@"  >&2
+            echo -e "@@\033[1;41;33m       [t1373]增加:...                         \033[0m@@"  >&2
+            echo  "@@@@@@@@@@@@@@@@***禁止空格数据***@@@@@@@@@@@@@@@@@"  >&2
+            exit 1
+        else
+            msg_length=${#message}
+            if [[ ${msg_length} -lt ${COMMIT_MESSAGE_MIN_LENGTH} ]]; then
+              echo    "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"  >&2
+              echo -e "@@\033[1;41;33m        Error: Message长度不得少于${COMMIT_MESSAGE_MIN_LENGTH}字符,当前提交message长度: ${msg_length}字符         \033[0m@@" >&2
+              echo    "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"  >&2
+              exit 1
+            fi
+
+        fi
+     fi
+done < $regularFileName
+
+此脚本为在客户端执行commit后进行commit的日志格式化匹配。
+
+将这两个脚本文件放到本地项目的.git/hooks中，该项目每次提交后即可完成日志记录的约束。不过此方法仅适用于单项目，那么是否可以进行一次设置，该客户端下的所有有效呢，请看如下。
+
+二、全局设置commit-msg的hooks
+
+1、创建文件夹：
+mkdir -p ~/.git_template/hooks
+
+该指令会在c盘用户目录下创建目录.git_template/hooks，如果不熟悉指令的也可手工进行创建文件夹。
+2、将一中的两个脚本文件放入创建好的文件夹中
+
+ 3、设置全局配置
+git config --global init.templatedir ~/.git_template
+
+如上三步完成后即可在创建新的使用git管理的项目的时候自动将全局模版拷贝至项目根目录/.git/目录下，如果完成如上三步后需要对已经存在对git项目使用该模版，可移动至目标项目根目录并执行git init即可。
+
+
+配置成功
+客户端配置成功效果
+
+注!!!
+如客户端配置错误或者未配置，Commit Message会在git push 阶段服务端校验，如报错则
+ # 执行命令进入vim编辑器，修改上commit message
+ git commit --amend
